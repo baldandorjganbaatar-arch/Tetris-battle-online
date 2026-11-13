@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online 2 Player Tetris</title>
+<style>
+:root{--bg:#0b1020;--panel:#151f38;--line:#344767;--text:#f3f6ff;--muted:#aebbd3;--cyan:#58d8ff;--pink:#ff79b7}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;height:100dvh;overflow:hidden;padding:7px;background:radial-gradient(ellipse at top,#263c68,#111a2e 58%,#080d18);color:var(--text);font-family:system-ui,Arial,sans-serif}
+main{max-width:1500px;height:100%;margin:auto;display:flex;flex-direction:column;min-height:0}
+header{text-align:center;margin:0 0 5px;flex:0 0 auto}
+h1{font-size:clamp(20px,3vw,30px);margin:0}
+header p{color:var(--muted);margin:2px;font-size:12px}
+.lobby{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;background:#111b30;border:1px solid var(--line);border-radius:10px;padding:6px;margin-bottom:6px;flex:0 0 auto}.lobby input{width:112px;background:#080e1a;color:white;border:1px solid #526586;border-radius:7px;padding:7px;text-align:center;text-transform:uppercase;font-weight:900;letter-spacing:2px}.lobby button{padding:7px 11px}.lobby-status{width:100%;text-align:center;font-size:11px;color:var(--muted)}.lobby .room-code{color:#ffda78;font-weight:1000;letter-spacing:3px;font-size:15px}
+.top{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;flex:0 0 auto}
+.info{background:#111b30;border:1px solid var(--line);border-radius:9px;padding:4px 12px;text-align:center;min-width:110px}
+.info small{display:block;color:var(--muted)}
+.info strong{font-size:17px}
+.boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(8px,2vw,24px);flex:1 1 auto;min-height:0;align-items:center}
+.player{background:linear-gradient(145deg,#1b2947,#10182b);border:1px solid var(--line);border-radius:12px;padding:6px;text-align:center;min-width:0;min-height:0}
+.player.p1{border-color:#347f9c}.player.p2{border-color:#a24d7c}
+.player h2{margin:0 0 1px;font-size:16px}
+.controls{font-size:10px;color:var(--muted);margin-bottom:4px;white-space:nowrap}
+canvas{display:block;width:auto;height:min(67vh,540px);max-height:100%;aspect-ratio:1/2;margin:auto;background:#080e1a;border:2px solid #526586;border-radius:7px}
+canvas.hold-preview{width:clamp(66px,8vw,100px);height:auto;aspect-ratio:4/3;margin:7px auto 0;border:1px solid #526586;border-radius:6px;background:#080e1a}
+ .board-wrap{display:flex;align-items:center;justify-content:center;gap:clamp(5px,1vw,12px);min-height:0}
+.game-canvas-wrap{position:relative;flex:0 1 auto;width:auto;min-height:0}
+.game-canvas-wrap>canvas{width:auto;height:min(67vh,540px);margin:0}
+.board-prompt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px;text-align:center;background:#07101eeF;border:2px solid #526586;border-radius:7px;z-index:2}
+.board-prompt b{font-size:18px}
+.board-prompt strong{font-size:clamp(36px,6vw,58px);color:#ffda78}
+.board-prompt span{font-size:14px;color:#d5def0;line-height:1.45}
+.board-prompt.ready{background:#07101edc;border-color:#75e6a2}
+.board-prompt.ready strong{color:#75e6a2}
+.hold-box{width:clamp(72px,9vw,112px);flex:0 0 clamp(72px,9vw,112px);padding:7px 3px;border:1px solid #526586;border-radius:9px;background:#0d1729;color:var(--muted);font-size:11px;font-weight:900}
+.ready-instructions{display:none;}
+.ready-instructions>div{min-width:190px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 18px;background:#111b30;border:1px solid var(--line);border-radius:13px}
+.ready-instructions strong{font-size:26px;color:#ffda78}
+.ready-instructions small{color:var(--muted)}
+.countdown{position:fixed;inset:0;z-index:8;display:none;align-items:center;justify-content:center;flex-direction:column;background:#050914eF;text-align:center}
+.countdown.show{display:flex}
+.count-number{font-size:clamp(100px,24vw,220px);font-weight:1000;line-height:1;color:#ffda78;text-shadow:0 0 45px #ffda7888;animation:pop .55s ease}
+.countdown p{font-size:clamp(20px,4vw,32px);font-weight:900;letter-spacing:3px}
+@keyframes pop{0%{transform:scale(.5);opacity:.2}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.stats{display:flex;justify-content:center;gap:14px;margin-top:4px;font-weight:800}
+.stats span{color:var(--muted);font-size:12px}
+.stats b{color:white;font-size:15px}
+.message{min-height:22px;text-align:center;font-size:12px;font-weight:900;color:#ffe08a;padding:3px 2px;flex:0 0 auto}
+.actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;background:#111b30;border:1px solid var(--line);border-radius:10px;padding:5px;flex:0 0 auto}
+button{border:1px solid #7188b2;background:#2b416b;color:white;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:900;cursor:pointer}
+button:hover{filter:brightness(1.15)}button:disabled{opacity:.45;cursor:not-allowed}
+.help{display:none}
+.overlay{position:fixed;inset:0;background:#050914dd;display:none;align-items:center;justify-content:center;padding:20px;z-index:5}
+.overlay.show{display:flex}
+.modal{max-width:480px;width:100%;text-align:center;background:linear-gradient(145deg,#26395f,#111a2e);border:2px solid #ffda78;border-radius:20px;padding:26px;box-shadow:0 18px 70px #0009}
+.modal .cup{font-size:65px}.modal h2{font-size:clamp(28px,7vw,44px);color:#ffda78;margin:5px 0}.modal p{color:var(--muted)}
+@media(max-height:760px){.game-canvas-wrap>canvas{height:58vh}.controls{font-size:9px}.player h2{font-size:14px}.stats{margin-top:2px}.top{margin-bottom:3px}}
+@media(max-width:900px){.boards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.player{padding:4px}.board-wrap{gap:4px}.hold-box{width:68px;flex-basis:68px}.controls{font-size:8px;white-space:normal}.game-canvas-wrap>canvas{height:min(60vh,540px)}}
+@media(max-width:560px){body{padding:3px}.boards{gap:4px}.player{padding:2px}.player h2{font-size:12px}.controls{font-size:7px}.hold-box{width:48px;flex-basis:48px;font-size:8px}.game-canvas-wrap>canvas{height:53vh}.hold-box canvas.hold-preview{width:42px}.stats{gap:6px}.stats span{font-size:9px}.stats b{font-size:12px}.message{font-size:10px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>🧱 ONLINE 2 PLAYER TETRIS</h1><p>Өөр өөр газраас интернэтээр холбогдон тоглоорой</p></header>
+<section class="lobby" id="lobby">
+ <button id="createRoomBtn" onclick="createRoom()">＋ Өрөө үүсгэх</button>
+ <input id="roomInput" maxlength="6" placeholder="ӨРӨӨНИЙ КОД" aria-label="Өрөөний код">
+ <button id="joinRoomBtn" onclick="joinRoom()">Өрөөнд нэгдэх</button>
+ <span id="roomCodeLabel" class="room-code"></span>
+ <div id="lobbyStatus" class="lobby-status">Эхлээд өрөө үүсгэх эсвэл найзынхаа кодоор нэгдэнэ үү.</div>
+</section>
+<section class="top">
+ <div class="info"><small>ТОГЛООМЫН ТӨЛӨВ</small><strong id="status">ХОЁУЛАА ЭХЛҮҮЛ</strong></div>
+ <div class="info"><small>ТОГЛОХ ХУГАЦАА</small><strong id="time">00:00</strong></div>
+</section>
+<section class="boards">
+ <div class="player p1">
+  <h2>🔵 ТОГЛОГЧ 1</h2>
+  <div class="controls">A / D — хөдлөх · W — эргүүлэх · S — доош · Space — унагах · C — хадгалах</div>
+  <div class="board-wrap">
+   <div class="game-canvas-wrap">
+    <canvas id="board1" width="300" height="600"></canvas>
+    <div class="board-prompt" id="boardPrompt1"><b>🔵 ТОГЛОГЧ 1</b><strong>SPACE</strong><span>Эхлүүлэхийн тулд SPACE дарна уу</span></div>
+   </div>
+   <aside class="hold-box"><span>ХАДГАЛСАН</span><canvas class="hold-preview" id="holdCanvas1" width="112" height="84"></canvas></aside>
+  </div>
+  <div class="stats"><div><span>ОНОО</span><br><b id="score1">0</b></div><div><span>ШУГАМ</span><br><b id="lines1">0</b></div></div>
+ </div>
+ <div class="player p2">
+  <h2>🩷 ТОГЛОГЧ 2</h2>
+  <div class="controls">← / → — хөдлөх · ↑ — эргүүлэх · ↓ — доош · Enter — унагах · Shift — хадгалах</div>
+  <div class="board-wrap">
+   <div class="game-canvas-wrap">
+    <canvas id="board2" width="300" height="600"></canvas>
+    <div class="board-prompt" id="boardPrompt2"><b>🩷 ТОГЛОГЧ 2</b><strong>ENTER</strong><span>Эхлүүлэхийн тулд ENTER дарна уу</span></div>
+   </div>
+   <aside class="hold-box"><span>ХАДГАЛСАН</span><canvas class="hold-preview" id="holdCanvas2" width="112" height="84"></canvas></aside>
+  </div>
+  <div class="stats"><div><span>ОНОО</span><br><b id="score2">0</b></div><div><span>ШУГАМ</span><br><b id="lines2">0</b></div></div>
+ </div>
+</section>
+<div class="ready-instructions" id="readyInstructions">
+ <div><b>🔵 ТОГЛОГЧ 1</b><strong>SPACE</strong><small id="ready1">Эхлүүлэх товчоо дарна уу</small></div>
+ <div><b>🩷 ТОГЛОГЧ 2</b><strong>ENTER</strong><small id="ready2">Эхлүүлэх товчоо дарна уу</small></div>
+</div>
+<div class="message" id="message">Хоёр тоглогч хоёулаа товчоо дарахад 3 · 2 · 1 · START эхэлнэ.</div>
+<div class="countdown" id="countdown"><div class="count-number" id="countNumber">3</div><p>ХОЁР ТОГЛОГЧИД БЭЛДЭЭРЭЙ!</p></div>
+<section class="actions">
+ <button id="start" onclick="resumeGame()" disabled>▶ Хоёулаа эхлүүлнэ</button>
+ <button id="pauseButton" onclick="pauseGame()">Ⅱ Түр зогсоох</button>
+ <button onclick="resetGame()">↻ Дахин эхлүүлэх</button>
+</section>
+<p class="help">Дүрэм: Бүтэн мөр арилгавал нөгөө тоглогчийн талбайн доод хэсэгт саадтай мөр нэмэгдэнэ. Хоёр тоглогч 0.15 секундийн дотор зэрэг мөр арилгавал нэмэлт мөрүүд харилцан цуцлагдана. Хадгалсан блок жижиг цонхонд харагдана. C / Shift товчоор нэг блок хадгалж, дараа нь сольж хэрэглэж болно (нэг унаж буй блокт нэг удаа). Хэн түрүүлж блокоо дээд хязгаарт тулгаж тоглоомоо дуусгана, тэр ялагдана.</p>
+</main>
+<div class="overlay" id="overlay"><div class="modal"><div class="cup">🏆</div><h2 id="winner">ЯЛАГЧ!</h2><p id="final"></p><button onclick="resetGame()">Дахин тоглох</button></div></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const COLS=10,ROWS=20,SIZE=30;
+const SHAPES=[
+ {m:[[1,1,1,1]],c:"#36c9ed"},
+ {m:[[1,1],[1,1]],c:"#f5d34f"},
+ {m:[[0,1,0],[1,1,1]],c:"#a77bf5"},
+ {m:[[1,0,0],[1,1,1]],c:"#4c83ed"},
+ {m:[[0,0,1],[1,1,1]],c:"#ed9b45"},
+ {m:[[0,1,1],[1,1,0]],c:"#58cf86"},
+ {m:[[1,1,0],[0,1,1]],c:"#ef6680"}
+];
+const $=id=>document.getElementById(id);
+let players=[],running=false,paused=false,ended=false,lastTime=0,elapsed=0,raf=0,clockStart=0;
+let socket=null,role=0,roomCode="",networkReady=false,lastBroadcast=0,winnerId=0,guestCountdownTimer=null;
+function newPiece(){const s=SHAPES[Math.floor(Math.random()*SHAPES.length)];return {m:s.m.map(r=>r.slice()),c:s.c,x:3,y:0};}
+function makePlayer(id){
+ return {id,grid:Array.from({length:ROWS},()=>Array(COLS).fill(null)),piece:newPiece(),held:null,holdUsed:false,score:0,lines:0,drop:0,interval:650,dead:false,ctx:$("board"+id).getContext("2d")};
+}
+function draw(p){
+ const c=p.ctx;c.clearRect(0,0,300,600);c.fillStyle="#080e1a";c.fillRect(0,0,300,600);
+ c.strokeStyle="#17243a";c.lineWidth=1;
+ for(let x=0;x<=COLS;x++){c.beginPath();c.moveTo(x*SIZE,0);c.lineTo(x*SIZE,600);c.stroke();}
+ for(let y=0;y<=ROWS;y++){c.beginPath();c.moveTo(0,y*SIZE);c.lineTo(300,y*SIZE);c.stroke();}
+ for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(p.grid[y][x])block(c,x,y,p.grid[y][x]);
+ if(p.piece&&!p.dead){
+  let ghostY=p.piece.y;
+  while(!collision(p,0,ghostY-p.piece.y+1))ghostY++;
+  c.save();c.globalAlpha=.22;
+  for(let y=0;y<p.piece.m.length;y++)for(let x=0;x<p.piece.m[y].length;x++)if(p.piece.m[y][x])block(c,p.piece.x+x,ghostY+y,p.piece.c);
+  c.restore();
+  c.save();c.globalAlpha=1;
+  for(let y=0;y<p.piece.m.length;y++)for(let x=0;x<p.piece.m[y].length;x++)if(p.piece.m[y][x])block(c,p.piece.x+x,p.piece.y+y,p.piece.c);
+  c.restore();
+ }
+ if(p.dead){c.fillStyle="#050914aa";c.fillRect(0,0,300,600);c.fillStyle="#fff";c.font="bold 26px system-ui";c.textAlign="center";c.fillText("GAME OVER",150,300);}
+}
+function block(c,x,y,color){
+ c.fillStyle=color;c.fillRect(x*SIZE+1,y*SIZE+1,SIZE-2,SIZE-2);
+ c.fillStyle="#ffffff35";c.fillRect(x*SIZE+3,y*SIZE+3,SIZE-6,4);
+ c.strokeStyle="#ffffff50";c.strokeRect(x*SIZE+1.5,y*SIZE+1.5,SIZE-3,SIZE-3);
+}
+function drawHoldPreview(p){
+ const c=$("holdCanvas"+p.id).getContext("2d");
+ c.clearRect(0,0,112,84);c.fillStyle="#080e1a";c.fillRect(0,0,112,84);
+ if(!p.held){
+  c.fillStyle="#75839c";c.font="11px system-ui";c.textAlign="center";c.fillText("Хоосон",56,46);return;
+ }
+ const m=p.held.m,cell=18,w=m[0].length*cell,h=m.length*cell;
+ const ox=(112-w)/2,oy=(84-h)/2;
+ for(let y=0;y<m.length;y++)for(let x=0;x<m[y].length;x++)if(m[y][x]){
+  c.fillStyle=p.held.c;c.fillRect(ox+x*cell+1,oy+y*cell+1,cell-2,cell-2);
+  c.strokeStyle="#ffffff70";c.strokeRect(ox+x*cell+1.5,oy+y*cell+1.5,cell-3,cell-3);
+ }
+}
+function collision(p,dx=0,dy=0,m=p.piece.m){
+ for(let y=0;y<m.length;y++)for(let x=0;x<m[y].length;x++)if(m[y][x]){
+  const nx=p.piece.x+x+dx,ny=p.piece.y+y+dy;
+  if(nx<0||nx>=COLS||ny>=ROWS)return true;
+  if(ny>=0&&p.grid[ny][nx])return true;
+ }
+ return false;
+}
+function rotate(p){
+ const m=p.piece.m,rot=m[0].map((_,i)=>m.map(row=>row[i]).reverse());
+ if(!collision(p,0,0,rot))p.piece.m=rot;
+ else if(!collision(p,1,0,rot)){p.piece.x++;p.piece.m=rot;}
+ else if(!collision(p,-1,0,rot)){p.piece.x--;p.piece.m=rot;}
+}
+const pendingAttacks={1:null,2:null};
+function addGarbage(p,count){
+ if(p.dead||!count)return;
+ for(let i=0;i<count;i++){
+  if(p.grid[0].some(Boolean)){p.dead=true;finishGame(p.id);return;}
+  p.grid.shift();
+  const hole=Math.floor(Math.random()*COLS);
+  p.grid.push(Array.from({length:COLS},(_,x)=>x===hole?null:"#68758e"));
+ }
+ draw(p);
+}
+function sendAttack(p,count){
+ if(!count)return;
+ const other=p.id===1?2:1;
+ // If both players clear lines within a very short window, cancel both attacks.
+ if(pendingAttacks[other]){
+  clearTimeout(pendingAttacks[other].timer);
+  pendingAttacks[other]=null;
+  pendingAttacks[p.id]=null;
+  $("message").textContent="⚖️ Хоёр тоглогч зэрэг мөр арилгалаа — нэмэлт мөрүүд цуцлагдлаа!";
+  return;
+ }
+ const item={count,timer:null};
+ item.timer=setTimeout(()=>{
+  if(pendingAttacks[p.id]!==item)return;
+  pendingAttacks[p.id]=null;
+  if(running&&!ended){
+   addGarbage(players[other-1],count);
+   if(!ended)$("message").textContent=(p.id===1?"🔵 Тоглогч 1":"🩷 Тоглогч 2")+" мөр арилгалаа! Өрсөлдөгчид "+count+" саадтай мөр нэмэгдлээ.";
+  }
+ },150);
+ pendingAttacks[p.id]=item;
+}
+function lock(p){
+ const q=p.piece;
+ for(let y=0;y<q.m.length;y++)for(let x=0;x<q.m[y].length;x++)if(q.m[y][x]){
+  const yy=q.y+y,xx=q.x+x;
+  if(yy<0){p.dead=true;finishGame(p.id);return;}
+  p.grid[yy][xx]=q.c;
+ }
+ let count=0;
+ for(let y=ROWS-1;y>=0;y--)if(p.grid[y].every(Boolean)){p.grid.splice(y,1);p.grid.unshift(Array(COLS).fill(null));count++;y++;}
+ if(count){
+  p.lines+=count;
+  p.score+=[0,100,300,500,800][count]*Math.max(1,Math.floor(p.lines/10)+1);
+  p.interval=Math.max(110,650-Math.floor(p.lines/5)*45);
+  sendAttack(p,count);
+ }
+ p.piece=newPiece();p.holdUsed=false;
+ if(collision(p)){p.dead=true;finishGame(p.id);}
+ updateStats(p);draw(p);
+}
+function holdPiece(p){
+ if(p.holdUsed||p.dead)return;
+ const current={m:p.piece.m.map(row=>row.slice()),c:p.piece.c};
+ if(!p.held){
+  p.held=current;
+  p.piece=newPiece();
+ }else{
+  const swap=p.held;
+  p.held=current;
+  p.piece={m:swap.m.map(row=>row.slice()),c:swap.c,x:3,y:0,drop:0};
+ }
+ p.holdUsed=true;
+ drawHoldPreview(p);
+ if(collision(p)){p.dead=true;finishGame(p.id);}
+ draw(p);
+}
+function updateStats(p){$("score"+p.id).textContent=p.score;$("lines"+p.id).textContent=p.lines;}
+function move(p,dx){if(!collision(p,dx,0))p.piece.x+=dx;}
+function softDrop(p){if(!collision(p,0,1)){p.piece.y++;p.score++;updateStats(p);}else lock(p);}
+function hardDrop(p){let n=0;while(!collision(p,0,1)){p.piece.y++;n++;}p.score+=n*2;updateStats(p);lock(p);}
+function act(id,key){
+ if(!running||paused||ended)return;const p=players[id-1];if(!p||p.dead)return;
+ if(key==="left")move(p,-1);if(key==="right")move(p,1);
+ if(key==="rotate")rotate(p);if(key==="down")softDrop(p);if(key==="drop")hardDrop(p);if(key==="hold")holdPiece(p);
+ draw(p);
+}
+let ready={1:false,2:false},countdownTimer=null;
+function updateReadyUI(){
+ for(const id of [1,2]){
+  const el=$("boardPrompt"+id);
+  if(ready[id]){
+   $("ready"+id).textContent="✓ БЭЛЭН БОЛСОН";$("ready"+id).style.color="#75e6a2";
+   el.classList.add("ready");el.innerHTML="<b>"+(id===1?"🔵 ТОГЛОГЧ 1":"🩷 ТОГЛОГЧ 2")+"</b><strong>✓ БЭЛЭН</strong><span>Нөгөө тоглогчийг хүлээж байна</span>";
+  }
+ }
+ $("status").textContent=ready[1]&&ready[2]?"ЭХЭЛЖ БАЙНА":(Number(ready[1])+Number(ready[2]))+" / 2 БЭЛЭН";
+ if(ready[1]&&ready[2]){
+  $("boardPrompt1").style.display="none";$("boardPrompt2").style.display="none";
+  $("start").disabled=true;$("start").textContent="Тоглож байна";
+ }
+}
+function markReady(id){
+ if(!networkReady||running||paused||ended||ready[id])return;
+ if((role===1&&id!==1)||(role===2&&id!==2))return;
+ socket.emit("ready");
+}
+function applyReadyStatus(data){
+ ready={1:!!data[1],2:!!data[2]};updateReadyUI();
+ const mine=role===1?1:2;
+ $("message").textContent=ready[mine]?"Та бэлэн боллоо. Нөгөө тоглогчийг хүлээж байна.":"Эхлүүлэх товчоо дарна уу.";
+ if(ready[1]&&ready[2]&&role===1&&!countdownTimer){socket.emit("countdown-start");runCountdown();}
+}
+function runCountdown(){
+ const steps=["3","2","1","START"];let i=0;
+ $("countdown").classList.add("show");
+ function tick(){
+  if(i>=steps.length){$("countdown").classList.remove("show");countdownTimer=null;$("readyInstructions").style.display="none";beginPlay();return;}
+  $("countNumber").textContent=steps[i];$("countNumber").style.color=steps[i]==="START"?"#75e6a2":"#ffda78";
+  i++;countdownTimer=setTimeout(tick,steps[i-1]==="START"?650:850);
+ }
+ tick();
+}
+function runGuestCountdown(){
+ if(guestCountdownTimer)clearTimeout(guestCountdownTimer);
+ const steps=["3","2","1","START"];let i=0;$("countdown").classList.add("show");
+ function tick(){if(i>=steps.length){$("countdown").classList.remove("show");guestCountdownTimer=null;return;}
+  $("countNumber").textContent=steps[i];$("countNumber").style.color=steps[i]==="START"?"#75e6a2":"#ffda78";i++;guestCountdownTimer=setTimeout(tick,steps[i-1]==="START"?650:850);}
+ tick();
+}
+function beginPlay(){
+ if(!players.length)players=[makePlayer(1),makePlayer(2)];
+ running=true;paused=false;ended=false;
+ if(role===1)socket.emit("start-game");
+ $("status").textContent="ТОГЛОЖ БАЙНА";
+ $("readyInstructions").style.display="none";
+ $("message").textContent="Амжилт хүсье! Бүтэн мөр үүсгэж өрсөлдөгчдөө саад нэмээрэй.";
+ lastTime=performance.now();raf=requestAnimationFrame(frame);if(role===1)broadcastState(true);
+}
+function resumeGame(){
+ if(paused){paused=false;running=true;$("status").textContent="ТОГЛОЖ БАЙНА";$("start").disabled=true;$("start").textContent="Тоглож байна";lastTime=performance.now();raf=requestAnimationFrame(frame);}
+}
+const heldKeys=new Map();
+const keyActions={KeyA:[1,"left"],KeyD:[1,"right"],KeyS:[1,"down"],ArrowLeft:[2,"left"],ArrowRight:[2,"right"],ArrowDown:[2,"down"]};
+function sendPlayerAction(action){if(role===1)act(1,action);else if(role===2&&networkReady)socket.emit("player-input",action);}
+document.addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();
+ if(!running&&!paused&&!ended){
+  if(e.code==="Space"&&role===1){e.preventDefault();markReady(1);return;}
+  if(e.key==="Enter"&&role===2){e.preventDefault();markReady(2);return;}
+ }
+ const map1={a:"left",d:"right",w:"rotate",s:"down"," ":"drop",c:"hold"};
+ const map2={arrowleft:"left",arrowright:"right",arrowup:"rotate",arrowdown:"down",enter:"drop",shift:"hold"};
+ const action=role===1?map1[k]:(role===2?map2[k]:null);
+ if(action)e.preventDefault();if(e.repeat||!action)return;
+ sendPlayerAction(action);
+ const owner=role===1?1:2;
+ if((role===1&&["KeyA","KeyD","KeyS"].includes(e.code))||(role===2&&["ArrowLeft","ArrowRight","ArrowDown"].includes(e.code))){
+  heldKeys.set(e.code,{id:owner,action:action,elapsed:0,next:160});
+ }
+});
+document.addEventListener("keyup",e=>heldKeys.delete(e.code));window.addEventListener("blur",()=>heldKeys.clear());
+function frame(t){
+ if(!running||paused||ended)return;
+ const dt=t-lastTime;lastTime=t;elapsed+=dt;
+ for(const [code,h] of heldKeys){h.elapsed+=dt;if(h.elapsed>=h.next){h.next+=h.action==="down"?55:48;sendPlayerAction(h.action);}}
+ for(const p of players)if(!p.dead){p.drop+=dt;if(p.drop>=p.interval){p.drop=0;if(!collision(p,0,1))p.piece.y++;else lock(p);}draw(p);}
+ $("time").textContent=formatTime(elapsed);
+ if(role===1&&t-lastBroadcast>60){broadcastState();lastBroadcast=t;}
+ if(ended||!running)return;raf=requestAnimationFrame(frame);
+}
+function serializeState(){return {players:players.map(p=>({id:p.id,grid:p.grid,piece:p.piece,held:p.held,holdUsed:p.holdUsed,score:p.score,lines:p.lines,interval:p.interval,dead:p.dead})),elapsed,running,paused,ended,winnerId,message:$("message").textContent};}
+function broadcastState(force=false){if(role===1&&socket&&networkReady)socket.emit("game-state",serializeState());}
+function applyRemoteState(data){
+ if(role!==2||!data)return;
+ if(!players.length)players=[makePlayer(1),makePlayer(2)];
+ data.players.forEach((v,i)=>{const p=players[i];p.grid=v.grid;p.piece=v.piece;p.held=v.held;p.holdUsed=v.holdUsed;p.score=v.score;p.lines=v.lines;p.interval=v.interval;p.dead=v.dead;draw(p);drawHoldPreview(p);updateStats(p);});
+ elapsed=data.elapsed||0;$("time").textContent=formatTime(elapsed);$("message").textContent=data.message||"";
+ if(data.running){running=true;paused=!!data.paused;$("status").textContent=paused?"ТҮР ЗОГССОН":"ТОГЛОЖ БАЙНА";}
+ if(data.ended&&!ended){ended=true;running=false;winnerId=data.winnerId;$("status").textContent="ДУУССАН";$("winner").textContent=winnerId===1?"🔵 ТОГЛОГЧ 1 ЯЛЛАА!":"🩷 ТОГЛОГЧ 2 ЯЛЛАА!";$("final").textContent=`Тоглогч ${winnerId===1?2:1} ялагдлаа. Оноо: ${players[0].score} — ${players[1].score}`;$("overlay").classList.add("show");}
+}
+function formatTime(ms){const n=Math.floor(ms/1000),m=String(Math.floor(n/60)).padStart(2,"0"),s=String(n%60).padStart(2,"0");return m+":"+s;}
+function startGame(){ /* Эхлүүлэхэд хоёр тоглогч тус тусын товчоо дарах шаардлагатай. */ }
+function pauseGame(){
+ if(!running||ended)return;
+ paused=!paused;
+ if(paused){cancelAnimationFrame(raf);$("status").textContent="ТҮР ЗОГССОН";$("message").textContent="Түр зогслоо. Үргэлжлүүлэх товчийг дарна уу.";$("start").disabled=false;$("start").textContent="▶ Үргэлжлүүлэх";}
+ else{lastTime=performance.now();$("status").textContent="ТОГЛОЖ БАЙНА";$("start").disabled=true;$("start").textContent="▶ Эхлүүлэх";raf=requestAnimationFrame(frame);}
+ if(role===1)broadcastState(true);
+}
+function finishGame(loserId){
+ if(ended)return;
+ running=false;ended=true;cancelAnimationFrame(raf);
+ for(const id of [1,2])if(pendingAttacks[id]){clearTimeout(pendingAttacks[id].timer);pendingAttacks[id]=null;}
+ $("status").textContent="ДУУССАН";$("start").disabled=false;$("start").textContent="Дахин тоглох";
+ winnerId=loserId===1?2:1;
+ const title=winnerId===1?"🔵 ТОГЛОГЧ 1 ЯЛЛАА!":"🩷 ТОГЛОГЧ 2 ЯЛЛАА!";
+ $("winner").textContent=title;
+ $("final").textContent=`Тоглогч ${loserId} блокоо дээд хязгаарт хүргэж ялагдлаа. Оноо: ${players[0].score} — ${players[1].score}`;
+ $("overlay").classList.add("show");$("message").textContent=title;if(role===1)broadcastState(true);
+}
+function resetGame(fromNetwork=false){
+ if(role===2&&!fromNetwork){socket.emit("reset-request");return;}
+ if(role===1&&!fromNetwork&&socket&&networkReady)socket.emit("reset-game");
+ cancelAnimationFrame(raf);
+ if(countdownTimer){clearTimeout(countdownTimer);countdownTimer=null;}
+ $("countdown").classList.remove("show");
+ for(const id of [1,2])if(pendingAttacks[id]){clearTimeout(pendingAttacks[id].timer);pendingAttacks[id]=null;}
+ players=[makePlayer(1),makePlayer(2)];running=false;paused=false;ended=false;elapsed=0;lastTime=0;ready={1:false,2:false};winnerId=0;heldKeys.clear();
+ $("status").textContent="ХОЁУЛАА ЭХЛҮҮЛ";$("time").textContent="00:00";$("message").textContent="Хоёр тоглогч хоёулаа товчоо дарахад 3 · 2 · 1 · START эхэлнэ.";
+ $("readyInstructions").style.display="flex";
+ $("ready1").textContent="Эхлүүлэх товчоо дарна уу";$("ready2").textContent="Эхлүүлэх товчоо дарна уу";
+ $("ready1").style.color="";$("ready2").style.color="";
+ $("boardPrompt1").style.display="flex";$("boardPrompt2").style.display="flex";
+ $("boardPrompt1").classList.remove("ready");$("boardPrompt2").classList.remove("ready");
+ $("boardPrompt1").innerHTML="<b>🔵 ТОГЛОГЧ 1</b><strong>SPACE</strong><span>Эхлүүлэхийн тулд SPACE дарна уу</span>";
+ $("boardPrompt2").innerHTML="<b>🩷 ТОГЛОГЧ 2</b><strong>ENTER</strong><span>Эхлүүлэхийн тулд ENTER дарна уу</span>";
+ $("start").disabled=true;$("start").textContent="▶ Хоёулаа эхлүүлнэ";$("overlay").classList.remove("show");
+ for(const p of players){updateStats(p);drawHoldPreview(p);draw(p);}
+ if(role===1)broadcastState(true);
+}
+
+function setLobbyStatus(msg){$("lobbyStatus").textContent=msg;}
+function initSocket(){
+ socket=io();
+ socket.on("connect",()=>setLobbyStatus("Серверт холбогдлоо. Өрөө үүсгэх эсвэл кодоор нэгдэнэ үү."));
+ socket.on("connect_error",()=>setLobbyStatus("Серверт холбогдож чадсангүй. Хуудсыг дахин ачаална уу."));
+ socket.on("room-created",d=>{role=1;roomCode=d.code;networkReady=true;$("pauseButton").disabled=false;$("roomCodeLabel").textContent="КОД: "+roomCode;$("createRoomBtn").disabled=true;$("joinRoomBtn").disabled=true;$("roomInput").disabled=true;setLobbyStatus("Өрөө үүслээ. Найздаа кодоо явуулж, нэгдэхийг хүлээнэ үү.");resetGame(true);});
+ socket.on("room-joined",d=>{role=2;roomCode=d.code;networkReady=true;$("pauseButton").disabled=true;$("roomCodeLabel").textContent="КОД: "+roomCode;$("createRoomBtn").disabled=true;$("joinRoomBtn").disabled=true;$("roomInput").disabled=true;setLobbyStatus("Өрөөнд амжилттай нэгдлээ. Тоглогч 1 эхлүүлэхийг хүлээнэ үү.");$("boardPrompt1").querySelector("span").textContent="Тоглогч 1-ийн талбар";});
+ socket.on("peer-joined",()=>{if(role===1)setLobbyStatus("Найз тань холбогдлоо. SPACE дарж бэлэн болсноо мэдэгдэнэ үү.");});
+ socket.on("peer-left",()=>{setLobbyStatus("Нөгөө тоглогч саллаа. Өрөө хаагдсан.");networkReady=false;running=false;});
+ socket.on("ready-status",applyReadyStatus);
+ socket.on("countdown-start",()=>{if(role===2)runGuestCountdown();});
+ socket.on("start-game",()=>{if(role===2){running=true;paused=false;ended=false;$("status").textContent="ТОГЛОЖ БАЙНА";$("message").textContent="Амжилт хүсье! Өрсөлдөгчдөө саад нэмээрэй.";}});
+ socket.on("remote-input",action=>{if(role===1)act(2,action);});
+ socket.on("game-state",applyRemoteState);
+ socket.on("request-state",()=>{if(role===1)broadcastState(true);});
+ socket.on("reset-game",()=>{if(role===2)resetGame(true);});
+ socket.on("reset-request",()=>{if(role===1)resetGame(true);});
+ socket.on("room-error",msg=>setLobbyStatus(msg));
+}
+function createRoom(){if(!socket||!socket.connected){setLobbyStatus("Сервертэй холбогдож байна...");return;}socket.emit("create-room");}
+function joinRoom(){const code=$("roomInput").value.trim().toUpperCase();if(code.length!==6){setLobbyStatus("6 оронтой өрөөний код оруулна уу.");return;}if(!socket||!socket.connected){setLobbyStatus("Сервертэй холбогдож байна...");return;}socket.emit("join-room",code);}
+$("roomInput").addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);});
+initSocket();
+resetGame();
+</script>
+</body>
+</html>
